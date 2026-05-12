@@ -1,20 +1,12 @@
 class InputHandler {
     constructor() {
         this.keys = {};
-        this.touchData = {
-            active: false,
-            startX: 0,
-            startY: 0,
-            currentX: 0,
-            currentY: 0,
-            angle: 0,
-            force: 0
-        };
-
+        this.joystickVector = { x: 0, y: 0 }; // Added for continuous control
+        
         this.settings = {
-            fixedJoystick: localStorage.getItem("fixedJoystick") !== "false", // Default true
+            fixedJoystick: localStorage.getItem("fixedJoystick") !== "false", 
             joystickRadius: 60,
-            deadzone: 10
+            deadzone: 0.15 // Normalized deadzone (0-1)
         };
 
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -44,6 +36,7 @@ class InputHandler {
     initFocusHandling() {
         window.addEventListener("blur", () => {
             this.keys = {};
+            this.joystickVector = { x: 0, y: 0 };
         });
     }
 
@@ -54,45 +47,68 @@ class InputHandler {
 
         if (!zone) return;
 
-        zone.addEventListener("touchstart", (e) => {
+        let startX = 0, startY = 0;
+
+        const handleStart = (e) => {
             const touch = e.touches[0];
             const rect = zone.getBoundingClientRect();
             
-            this.touchData.active = true;
-            
             if (this.settings.fixedJoystick) {
-                this.touchData.startX = rect.left + rect.width / 2;
-                this.touchData.startY = rect.top + rect.height / 2;
+                startX = rect.left + rect.width / 2;
+                startY = rect.top + rect.height / 2;
             } else {
-                // Dynamic joystick position (not implemented yet, but keeping startX/Y as touch start)
-                this.touchData.startX = touch.clientX;
-                this.touchData.startY = touch.clientY;
+                startX = touch.clientX;
+                startY = touch.clientY;
             }
             
-            this.handleTouchMove(touch);
+            handleMove(e);
             e.preventDefault();
-        }, { passive: false });
+        };
 
-        window.addEventListener("touchmove", (e) => {
-            if (this.touchData.active) {
-                this.handleTouchMove(e.touches[0]);
-                e.preventDefault();
+        const handleMove = (e) => {
+            const touch = e.touches[0];
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            const maxDist = this.settings.joystickRadius;
+            const normalizedDist = Math.min(dist / maxDist, 1.0);
+            const angle = Math.atan2(dy, dx);
+            
+            // Update vector (x = turn, y = forward)
+            if (normalizedDist > this.settings.deadzone) {
+                this.joystickVector.x = Math.cos(angle) * normalizedDist;
+                this.joystickVector.y = -Math.sin(angle) * normalizedDist; // Invert Y for forward
+            } else {
+                this.joystickVector.x = 0;
+                this.joystickVector.y = 0;
             }
-        }, { passive: false });
 
-        window.addEventListener("touchend", () => {
-            this.touchData.active = false;
+            // Visual update
             if (stick) {
-                stick.style.transition = "transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+                stick.style.transition = "none";
+                const visualX = Math.cos(angle) * normalizedDist * maxDist;
+                const visualY = Math.sin(angle) * normalizedDist * maxDist;
+                stick.style.transform = `translate(${visualX}px, ${visualY}px)`;
+            }
+            e.preventDefault();
+        };
+
+        const handleEnd = () => {
+            this.joystickVector = { x: 0, y: 0 };
+            if (stick) {
+                stick.style.transition = "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
                 stick.style.transform = `translate(0, 0)`;
             }
-            
-            // Clear virtual keys
-            this.keys["ArrowUp"] = false;
-            this.keys["ArrowDown"] = false;
-            this.keys["ArrowLeft"] = false;
-            this.keys["ArrowRight"] = false;
-        });
+        };
+
+        zone.addEventListener("touchstart", handleStart, { passive: false });
+        window.addEventListener("touchmove", (e) => {
+            if (e.touches.length > 0 && e.target.closest("#joystickZone")) {
+                handleMove(e);
+            }
+        }, { passive: false });
+        window.addEventListener("touchend", handleEnd);
 
         if (fireBtn) {
             fireBtn.addEventListener("touchstart", (e) => {
@@ -105,41 +121,27 @@ class InputHandler {
         }
     }
 
-    handleTouchMove(touch) {
-        const stick = document.getElementById("joystickStick");
-        const dx = touch.clientX - this.touchData.startX;
-        const dy = touch.clientY - this.touchData.startY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        const maxDist = this.settings.joystickRadius;
-        const limitedDist = Math.min(dist, maxDist);
-        const angle = Math.atan2(dy, dx);
-        
-        this.touchData.angle = angle;
-        this.touchData.force = limitedDist / maxDist;
-
-        if (stick) {
-            stick.style.transition = "none";
-            const moveX = Math.cos(angle) * limitedDist;
-            const moveY = Math.sin(angle) * limitedDist;
-            stick.style.transform = `translate(${moveX}px, ${moveY}px)`;
-        }
-
-        // Map to virtual keys with deadzone
-        this.keys["ArrowUp"] = false;
-        this.keys["ArrowDown"] = false;
-        this.keys["ArrowLeft"] = false;
-        this.keys["ArrowRight"] = false;
-
-        if (dist > this.settings.deadzone) {
-            if (Math.abs(angle) < Math.PI * 0.4) this.keys["ArrowRight"] = true;
-            if (Math.abs(angle) > Math.PI * 0.6) this.keys["ArrowLeft"] = true;
-            if (angle > -Math.PI * 0.8 && angle < -Math.PI * 0.2) this.keys["ArrowUp"] = true;
-            if (angle > Math.PI * 0.2 && angle < Math.PI * 0.8) this.keys["ArrowDown"] = true;
-        }
-    }
-
     isPressed(code) {
         return !!this.keys[code];
+    }
+
+    getMovement() {
+        // Combine keyboard and joystick
+        let forward = 0;
+        let turn = 0;
+
+        if (this.keys["ArrowUp"] || this.keys["KeyW"]) forward += 1;
+        if (this.keys["ArrowDown"] || this.keys["KeyS"]) forward -= 1;
+        if (this.keys["ArrowLeft"] || this.keys["KeyA"]) turn -= 1;
+        if (this.keys["ArrowRight"] || this.keys["KeyD"]) turn += 1;
+
+        // Use joystick if active (prioritize or blend)
+        if (Math.abs(this.joystickVector.y) > 0.1) forward = this.joystickVector.y;
+        
+        // For turn, we map X to the rotate amount. 
+        // Note: joystickVector.x is turn, but our tank rotation logic expects -1 to 1.
+        if (Math.abs(this.joystickVector.x) > 0.1) turn = this.joystickVector.x;
+
+        return { forward, turn };
     }
 }

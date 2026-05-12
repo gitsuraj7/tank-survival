@@ -125,10 +125,11 @@ class TankSurvival {
     handleInput() {
         if (this.state !== State.PLAYING || !this.player) return;
 
-        if (this.input.isPressed("ArrowUp") || this.input.isPressed("KeyW")) this.player.move(1);
-        if (this.input.isPressed("ArrowDown") || this.input.isPressed("KeyS")) this.player.move(-1);
-        if (this.input.isPressed("ArrowLeft") || this.input.isPressed("KeyA")) this.player.rotate(-1);
-        if (this.input.isPressed("ArrowRight") || this.input.isPressed("KeyD")) this.player.rotate(1);
+        const { forward, turn } = this.input.getMovement();
+        
+        if (forward !== 0) this.player.move(forward);
+        if (turn !== 0) this.player.rotate(turn);
+
         if (this.input.isPressed("Space") || this.input.isPressed("Enter")) this.fireBullet(this.player);
     }
 
