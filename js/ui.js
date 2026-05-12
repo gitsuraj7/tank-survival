@@ -1,3 +1,4 @@
+class UIManager {
     constructor(game) {
         this.game = game;
         this.p1Score = document.getElementById("p1Score");
@@ -58,7 +59,7 @@
     showGameOver(attackerId) {
         if (this.winnerText) {
             const attackerName = attackerId === 1 ? "PLAYER" : (attackerId === 0 ? "ARENA" : "ENEMY");
-            this.winnerText.innerText = `COMBAT TERMINATED\nDESTROYED BY ${attackerName}\nFINAL SCORE: ${window.game.score}`;
+            this.winnerText.innerText = `COMBAT TERMINATED\nDESTROYED BY ${attackerName}\nFINAL SCORE: ${this.game.score}`;
         }
         if (this.gameOver) this.gameOver.classList.remove("hidden");
     }
