@@ -24,9 +24,13 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    touch-action: none;
+    touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
+}
+
+canvas {
+    touch-action: none;
 }
 
 .game-wrapper {
@@ -352,7 +356,6 @@ button:active {
 .p-info h3 { font-size: 12px; margin-bottom: 5px; color: #666; }
 .p-info p { font-size: 14px; color: #fff; }
 
-/* CRT/Scanline Effect Overlay */
 .game-container::after {
     content: "";
     position: absolute;
@@ -364,4 +367,13 @@ button:active {
     background-size: 100% 4px;
     pointer-events: none;
     z-index: 5;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.btn, button {
+    cursor: pointer;
+    pointer-events: auto;
 }

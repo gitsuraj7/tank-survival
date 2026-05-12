@@ -72,7 +72,12 @@ class TankSurvival {
     }
 
     startSurvival() {
-        this.audio.playClick();
+        console.log("Game: Starting Survival Mode...");
+        try {
+            this.audio.playClick();
+        } catch (e) {
+            console.warn("Audio: Failed to play click sound", e);
+        }
         this.reset();
         this.state = State.PLAYING;
         this.ui.hideOverlays();
