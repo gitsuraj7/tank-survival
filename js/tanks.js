@@ -9,6 +9,7 @@ class Tank {
         this.height = CONFIG.TANK_HEIGHT;
         
         this.velocity = 0;
+        this.angularVelocity = 0; // Added for smooth rotation
         this.recoil = 0;
         this.lastShot = 0;
         this.health = 100;
@@ -31,7 +32,9 @@ class Tank {
 
     rotate(dir) {
         if (this.isDead) return;
-        this.angle += dir * 0.08;
+        // Apply acceleration to angular velocity instead of direct angle change
+        const rotationAccel = 0.015;
+        this.angularVelocity += dir * rotationAccel;
     }
 
     takeDamage() {
@@ -42,52 +45,84 @@ class Tank {
     update(deltaTime, obstacles, others = []) {
         if (this.isDead) return;
 
-        // Friction
+        // Linear Friction
         this.velocity *= 0.92;
         if (Math.abs(this.velocity) < 0.1) this.velocity = 0;
 
-        // Predictive collision
-        const nx = this.x + Math.cos(this.angle) * this.velocity;
-        const ny = this.y + Math.sin(this.angle) * this.velocity;
-        const tankRect = { x: nx - this.width/2, y: ny - this.height/2, w: this.width, h: this.height };
-        
-        let blocked = false;
-        
-        // Obstacle collision
+        // Angular Friction (Smooth rotation)
+        this.angle += this.angularVelocity;
+        this.angularVelocity *= 0.85;
+        if (Math.abs(this.angularVelocity) < 0.001) this.angularVelocity = 0;
+
+        // Sliding Collision: Attempt X and Y separately
+        const moveX = Math.cos(this.angle) * this.velocity;
+        const moveY = Math.sin(this.angle) * this.velocity;
+
+        // Try X move
+        let oldX = this.x;
+        this.x += moveX;
+        let tankRectX = { x: this.x - this.width/2, y: this.y - this.height/2, w: this.width, h: this.height };
+        let collidedX = false;
+
         for (const o of obstacles) {
-            if (Collision.rectRect(tankRect, o)) {
-                blocked = true;
-                this.velocity *= -0.5;
+            if (Collision.rectRect(tankRectX, o)) {
+                collidedX = true;
                 break;
             }
         }
-
-        // Tank-Tank collision (Bug 4)
-        if (!blocked) {
+        if (!collidedX) {
             for (const other of others) {
                 if (other !== this && !other.isDead) {
                     const otherRect = { x: other.x - other.width/2, y: other.y - other.height/2, w: other.width, h: other.height };
-                    if (Collision.rectRect(tankRect, otherRect)) {
-                        blocked = true;
-                        this.velocity *= -0.5;
-                        other.velocity += this.velocity * 0.5; // Push other tank slightly
+                    if (Collision.rectRect(tankRectX, otherRect)) {
+                        collidedX = true;
                         break;
                     }
                 }
             }
         }
+        if (collidedX) {
+            this.x = oldX;
+            this.velocity *= 0.8; // Friction against wall
+        }
 
-        if (!blocked) {
-            this.x = nx;
-            this.y = ny;
-            
-            // Movement Trail
-            if (Math.abs(this.velocity) > 0.5 && window.game) {
-                window.game.particles.createTrail(this.x - Math.cos(this.angle) * 20, this.y - Math.sin(this.angle) * 20, this.color);
+        // Try Y move
+        let oldY = this.y;
+        this.y += moveY;
+        let tankRectY = { x: this.x - this.width/2, y: this.y - this.height/2, w: this.width, h: this.height };
+        let collidedY = false;
+
+        for (const o of obstacles) {
+            if (Collision.rectRect(tankRectY, o)) {
+                collidedY = true;
+                break;
             }
+        }
+        if (!collidedY) {
+            for (const other of others) {
+                if (other !== this && !other.isDead) {
+                    const otherRect = { x: other.x - other.width/2, y: other.y - other.height/2, w: other.width, h: other.height };
+                    if (Collision.rectRect(tankRectY, otherRect)) {
+                        collidedY = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (collidedY) {
+            this.y = oldY;
+            this.velocity *= 0.8; // Friction against wall
+        }
 
-            const hitBounds = Physics.checkBounds(this, CONFIG.ARENA_WIDTH, CONFIG.ARENA_HEIGHT);
-            if (hitBounds) this.velocity *= -0.5; // Bug 9: Handle bounds hit
+        // Boundary check
+        if (this.x - this.width/2 < 0) { this.x = this.width/2; this.velocity *= 0.8; }
+        if (this.x + this.width/2 > CONFIG.ARENA_WIDTH) { this.x = CONFIG.ARENA_WIDTH - this.width/2; this.velocity *= 0.8; }
+        if (this.y - this.height/2 < 0) { this.y = this.height/2; this.velocity *= 0.8; }
+        if (this.y + this.height/2 > CONFIG.ARENA_HEIGHT) { this.y = CONFIG.ARENA_HEIGHT - this.height/2; this.velocity *= 0.8; }
+
+        // Movement Trail
+        if (Math.abs(this.velocity) > 0.5 && window.game) {
+            window.game.particles.createTrail(this.x - Math.cos(this.angle) * 20, this.y - Math.sin(this.angle) * 20, this.color);
         }
 
         if (this.recoil > 0) this.recoil *= 0.8;
