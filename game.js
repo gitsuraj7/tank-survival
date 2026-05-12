@@ -4,6 +4,7 @@ class TankSurvival {
         this.ctx = this.canvas.getContext("2d");
         
         this.input = new InputHandler();
+        this.mobileInput = new MobileInputController(this);
         this.renderer = new Renderer(this.canvas, this.ctx);
         this.particles = new ParticleSystem(this);
         this.ui = new UIManager(this);
@@ -125,12 +126,28 @@ class TankSurvival {
     handleInput() {
         if (this.state !== State.PLAYING || !this.player) return;
 
-        const { forward, turn } = this.input.getMovement();
+        // 1. Keyboard Input
+        let kbForward = 0;
+        let kbTurn = 0;
+        if (this.input.isPressed("ArrowUp") || this.input.isPressed("KeyW")) kbForward += 1;
+        if (this.input.isPressed("ArrowDown") || this.input.isPressed("KeyS")) kbForward -= 1;
+        if (this.input.isPressed("ArrowLeft") || this.input.isPressed("KeyA")) kbTurn -= 1;
+        if (this.input.isPressed("ArrowRight") || this.input.isPressed("KeyD")) kbTurn += 1;
+
+        // 2. Mobile Analog Input
+        const mobileMV = this.mobileInput.movementVector;
         
+        // 3. Combined Application (Prioritize Mobile Analog if active)
+        const forward = Math.abs(mobileMV.y) > 0.05 ? mobileMV.y : kbForward;
+        const turn = Math.abs(mobileMV.x) > 0.05 ? mobileMV.x : kbTurn;
+
         if (forward !== 0) this.player.move(forward);
         if (turn !== 0) this.player.rotate(turn);
 
-        if (this.input.isPressed("Space") || this.input.isPressed("Enter")) this.fireBullet(this.player);
+        // Shooting
+        if (this.input.isPressed("Space") || this.input.isPressed("Enter") || this.mobileInput.isFiring) {
+            this.fireBullet(this.player);
+        }
     }
 
     fireBullet(tank) {
@@ -222,6 +239,7 @@ class TankSurvival {
         this.renderer.restoreCamera();
         
         this.renderer.drawScanlines();
+        this.mobileInput.renderDebug(this.ctx);
     }
 }
 
