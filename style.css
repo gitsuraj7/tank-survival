@@ -66,12 +66,12 @@ canvas {
 /* Staggered HUD Elements */
 .scoreboard {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 2vh;
+    right: 2vw;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    font-size: clamp(14px, 4vw, 24px);
+    gap: 0.5vh;
+    font-size: clamp(14px, 2.5vw, 24px);
     font-weight: bold;
     letter-spacing: 2px;
     z-index: 10;
@@ -102,13 +102,13 @@ canvas {
 /* Mobile Controls */
 #mobileControls {
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     pointer-events: none;
     z-index: 50;
-    display: none; /* Shown via JS or Media Query if touch */
+    display: none; 
 }
 
 @media (pointer: coarse) {
@@ -117,10 +117,12 @@ canvas {
 
 #joystickZone {
     position: absolute;
-    bottom: 40px;
-    left: 40px;
-    width: 150px;
-    height: 150px;
+    bottom: 8vh;
+    left: 8vw;
+    width: 25vw;
+    height: 25vw;
+    max-width: 180px;
+    max-height: 180px;
     pointer-events: auto;
 }
 
@@ -133,41 +135,117 @@ canvas {
     display: flex;
     justify-content: center;
     align-items: center;
+    backdrop-filter: blur(4px);
 }
 
 #joystickStick {
-    width: 60px;
-    height: 60px;
+    width: 40%;
+    height: 40%;
     background: var(--primary);
     border-radius: 50%;
     box-shadow: 0 0 20px var(--primary);
-    opacity: 0.6;
+    opacity: 0.8;
 }
 
 #mobileFireBtn {
     position: absolute;
-    bottom: 40px;
-    right: 40px;
-    width: 120px;
-    height: 120px;
+    bottom: 8vh;
+    right: 8vw;
+    width: 20vw;
+    height: 20vw;
+    max-width: 150px;
+    max-height: 150px;
     border-radius: 50%;
     background: rgba(255, 62, 62, 0.1);
     border: 2px solid #ff3e3e;
     color: #ff3e3e;
     font-weight: bold;
-    font-size: 16px;
+    font-size: clamp(14px, 4vw, 20px);
     pointer-events: auto;
     display: flex;
     justify-content: center;
     align-items: center;
     box-shadow: 0 0 30px rgba(255, 62, 62, 0.2);
+    backdrop-filter: blur(4px);
 }
 
 #mobileFireBtn:active {
     background: #ff3e3e;
     color: black;
-    transform: scale(0.95);
+    transform: scale(0.9);
 }
+
+/* Settings Icon */
+.settings-cog {
+    position: absolute;
+    top: 2vh;
+    left: 2vw;
+    width: 32px;
+    height: 32px;
+    color: var(--primary);
+    cursor: pointer;
+    z-index: 110;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.3s;
+}
+
+.settings-cog:hover { opacity: 1; transform: rotate(45deg); }
+
+.settings-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.settings-content {
+    background: var(--panel);
+    border: 1px solid var(--primary);
+    padding: 30px;
+    width: 300px;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px; width: 16px;
+    left: 4px; bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider { background-color: var(--primary); }
+input:checked + .slider:before { transform: translateX(26px); }
 
 /* Overlays - Sharp Geometry */
 .overlay {

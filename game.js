@@ -5,8 +5,8 @@ class TankSurvival {
         
         this.input = new InputHandler();
         this.renderer = new Renderer(this.canvas, this.ctx);
-        this.particles = new ParticleSystem();
-        this.ui = new UIManager();
+        this.particles = new ParticleSystem(this);
+        this.ui = new UIManager(this);
         this.audio = audio;
         
         this.state = State.MENU;
@@ -25,10 +25,45 @@ class TankSurvival {
 
         this.waveManager = new WaveManager(this);
         this.engine = new GameEngine(this.update.bind(this), this.draw.bind(this));
+        
+        this.layoutUpdate();
+        window.addEventListener("resize", () => this.layoutUpdate());
+        
         this.initUI();
         this.engine.start();
 
         this.powerupTimer = 15000;
+    }
+
+    layoutUpdate() {
+        const wrapper = document.querySelector(".game-wrapper");
+        const container = document.querySelector(".game-container");
+        if (!wrapper || !container) return;
+
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const targetAspect = CONFIG.ARENA_WIDTH / CONFIG.ARENA_HEIGHT;
+        const windowAspect = windowWidth / windowHeight;
+
+        let scale = 1;
+        if (windowAspect > targetAspect) {
+            // Window is wider than arena
+            scale = (windowHeight * 0.9) / CONFIG.ARENA_HEIGHT;
+        } else {
+            // Window is narrower than arena
+            scale = (windowWidth * 0.95) / CONFIG.ARENA_WIDTH;
+        }
+
+        // Apply scale to wrapper
+        wrapper.style.width = `${CONFIG.ARENA_WIDTH * scale}px`;
+        wrapper.style.height = `${CONFIG.ARENA_HEIGHT * scale}px`;
+        
+        // Ensure status bar and top bar are reachable
+        const topBar = document.querySelector(".top-bar");
+        if (topBar) topBar.style.top = `${-40 * scale}px`;
+        
+        const statusBar = document.querySelector(".status-bar");
+        if (statusBar) statusBar.style.bottom = `${-30 * scale}px`;
     }
 
     initUI() {

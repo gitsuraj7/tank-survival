@@ -1,5 +1,5 @@
-class UIManager {
-    constructor() {
+    constructor(game) {
+        this.game = game;
         this.p1Score = document.getElementById("p1Score");
         this.p2Score = document.getElementById("p2Score");
         this.highScore = document.getElementById("highScore");
@@ -7,6 +7,36 @@ class UIManager {
         this.gameOver = document.getElementById("gameOver");
         this.winnerText = document.getElementById("winnerText");
         this.statusText = document.getElementById("statusText");
+        
+        // Settings elements
+        this.settingsBtn = document.getElementById("settingsBtn");
+        this.settingsOverlay = document.getElementById("settingsOverlay");
+        this.fixedJoystickToggle = document.getElementById("fixedJoystickToggle");
+        this.closeSettings = document.getElementById("closeSettings");
+
+        this.initSettings();
+    }
+
+    initSettings() {
+        if (this.settingsBtn) {
+            this.settingsBtn.addEventListener("click", () => {
+                this.settingsOverlay.style.display = "flex";
+                this.fixedJoystickToggle.checked = this.game.input.settings.fixedJoystick;
+            });
+        }
+
+        if (this.closeSettings) {
+            this.closeSettings.addEventListener("click", () => {
+                this.settingsOverlay.style.display = "none";
+            });
+        }
+
+        if (this.fixedJoystickToggle) {
+            this.fixedJoystickToggle.addEventListener("change", (e) => {
+                this.game.input.settings.fixedJoystick = e.target.checked;
+                localStorage.setItem("fixedJoystick", e.target.checked);
+            });
+        }
     }
 
     updateScores(data) {
