@@ -32,9 +32,10 @@ class Tank {
 
     rotate(dir) {
         if (this.isDead) return;
-        // Apply acceleration to angular velocity instead of direct angle change
-        const rotationAccel = 0.015;
-        this.angularVelocity += dir * rotationAccel;
+        // Non-linear scaling for finer precision at low tilt
+        const scaledDir = Math.sign(dir) * Math.pow(Math.abs(dir), 1.5);
+        const rotationAccel = 0.012; // Adjusted with power scaling
+        this.angularVelocity += scaledDir * rotationAccel;
     }
 
     takeDamage() {
@@ -51,7 +52,7 @@ class Tank {
 
         // Angular Friction (Smooth rotation)
         this.angle += this.angularVelocity;
-        this.angularVelocity *= 0.85;
+        this.angularVelocity *= 0.75; // Even more damping for precise aiming
         if (Math.abs(this.angularVelocity) < 0.001) this.angularVelocity = 0;
 
         // Sliding Collision: Attempt X and Y separately
