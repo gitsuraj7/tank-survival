@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Duel | Tactical Combat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="top-bar">
+            <div class="title">TANK DUEL</div>
+        </div>
+
+        <div class="game-container">
+            <div class="scoreboard">
+                <div class="p1-score">SCORE: <span id="p1Score">0</span></div>
+                <div class="p2-score">WAVE: <span id="p2Score">1</span></div>
+            </div>
+
+            <canvas id="gameCanvas" width="1100" height="600"></canvas>
+            
+            <div id="menu" class="overlay">
+                <div class="content">
+                    <h1>TANK SURVIVAL</h1>
+                    <p class="subtitle">Tactical Combat Prototype</p>
+                    <button id="startBtn">ENGAGE</button>
+                    <div class="instructions">
+                        <div class="p-info">
+                            <h3>CONTROLS</h3>
+                            <p>WASD or ARROWS / SPACE or ENTER</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="gameOver" class="overlay hidden">
+                <div class="content">
+                    <h2 id="winnerText">DOMINATION COMPLETE</h2>
+                    <button id="restartBtn">REINITIALIZE</button>
+                </div>
+            </div>
+
+            <div id="mobileControls" class="mobile-only">
+                <div id="joystickZone">
+                    <div id="joystickBase">
+                        <div id="joystickStick"></div>
+                    </div>
+                </div>
+                <button id="mobileFireBtn">ENGAGE</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <p id="statusText">System: Ready</p>
+        </div>
+    </div>
+
+    <!-- Modular Scripts (Loaded in order for file:// compatibility) -->
+    <script src="js/utils.js"></script>
+    <script src="js/collision.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/powerups.js"></script>
+    <script src="js/tanks.js"></script>
+    <script src="js/bullets.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/waveManager.js"></script>
+    <script src="js/rendering.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
