@@ -2,6 +2,7 @@ class UIManager {
     constructor() {
         this.p1Score = document.getElementById("p1Score");
         this.p2Score = document.getElementById("p2Score");
+        this.highScore = document.getElementById("highScore");
         this.menu = document.getElementById("menu");
         this.gameOver = document.getElementById("gameOver");
         this.winnerText = document.getElementById("winnerText");
@@ -11,6 +12,7 @@ class UIManager {
     updateScores(data) {
         if (this.p1Score) this.p1Score.innerText = data.p1;
         if (this.p2Score) this.p2Score.innerText = data.p2;
+        if (this.highScore && data.high !== undefined) this.highScore.innerText = data.high;
     }
 
     showMenu() {

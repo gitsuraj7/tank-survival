@@ -57,6 +57,14 @@ class WaveManager {
     onEnemyDestroyed() {
         this.enemiesRemaining--;
         this.game.score += 100 * this.currentWave;
-        this.game.ui.updateScores({ p1: this.game.score, p2: this.currentWave }); // p2 reused for wave display
+        
+        const highScore = Math.max(this.game.score, localStorage.getItem("tankHighScore") || 0);
+        localStorage.setItem("tankHighScore", highScore);
+        
+        this.game.ui.updateScores({ 
+            p1: this.game.score, 
+            p2: this.currentWave,
+            high: highScore
+        });
     }
 }

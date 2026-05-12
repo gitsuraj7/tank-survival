@@ -53,8 +53,11 @@ class TankSurvival {
         this.particles.clear();
         this.hitStop = 0;
         this.player = new Tank(150, CONFIG.ARENA_HEIGHT / 2, 0, CONFIG.P1_COLOR, 1);
+        this.player.health = 200; // Double life for main character
         this.waveManager.reset();
-        this.ui.updateScores({ p1: 0, p2: 1 }); // p2 reused for wave display
+        
+        const highScore = localStorage.getItem("tankHighScore") || 0;
+        this.ui.updateScores({ p1: 0, p2: 1, high: highScore });
     }
 
     spawnPowerUp() {
