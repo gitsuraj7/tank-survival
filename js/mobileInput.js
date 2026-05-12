@@ -1,35 +1,56 @@
 class MobileInputController {
     constructor(game) {
         this.game = game;
-        this.active = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        
-        // State
+
+        // DEVICE DETECTION
+        this.active =
+            'ontouchstart' in window ||
+            navigator.maxTouchPoints > 0;
+
+        // INPUT STATE
         this.movementVector = { x: 0, y: 0 };
+        this.smoothedVector = { x: 0, y: 0 };
         this.isFiring = false;
-        
-        // Touch Tracking
+
+        // TOUCH TRACKING
         this.moveTouchId = null;
         this.fireTouchId = null;
-        
-        // Joystick Geometry
+
+        // PERFORMANCE
+        this.lastUpdateTime = performance.now();
+
+        // JOYSTICK CONFIG
         this.joystick = {
+            active: false,
+
             baseX: 0,
             baseY: 0,
+
             stickX: 0,
             stickY: 0,
-            radius: 70,
-            deadzone: 15,
-            active: false
+
+            radius: 75,
+            deadzone: 18,
+            maxDistance: 75,
+
+            smoothing: 0.18,
+
+            dynamicMode: false,
         };
 
-        // DOM Elements (Existing)
-        this.zone = document.getElementById("joystickZone");
-        this.stick = document.getElementById("joystickStick");
-        this.fireBtn = document.getElementById("mobileFireBtn");
-        
-        // Settings
-        this.fixedMode = localStorage.getItem("fixedJoystick") !== "false";
-        this.debugEnabled = true; // Enabled by default for this task
+        // DOM REFERENCES
+        this.zone = document.getElementById('joystickZone');
+        this.stick = document.getElementById('joystickStick');
+        this.fireBtn = document.getElementById('mobileFireBtn');
+
+        // DEBUG
+        this.debugEnabled = true;
+
+        // SAFE AREA PADDING
+        this.safePadding = 24;
+
+        // MULTITOUCH CACHE
+        this.activeTouches = new Map();
 
         if (this.active) {
             this.init();
@@ -39,45 +60,90 @@ class MobileInputController {
     init() {
         if (!this.zone) return;
 
-        // Touch Listeners
-        this.zone.addEventListener("touchstart", (e) => this.handleMoveStart(e), { passive: false });
-        window.addEventListener("touchmove", (e) => this.handleMoveUpdate(e), { passive: false });
-        window.addEventListener("touchend", (e) => this.handleMoveEnd(e));
-        window.addEventListener("touchcancel", (e) => this.handleMoveEnd(e));
+        // IMPROVE TOUCH PERFORMANCE
+        document.body.style.touchAction = 'none';
 
+        // MOVEMENT
+        this.zone.addEventListener(
+            'touchstart',
+            (e) => this.handleMoveStart(e),
+            { passive: false }
+        );
+
+        window.addEventListener(
+            'touchmove',
+            (e) => this.handleMoveUpdate(e),
+            { passive: false }
+        );
+
+        window.addEventListener(
+            'touchend',
+            (e) => this.handleMoveEnd(e)
+        );
+
+        window.addEventListener(
+            'touchcancel',
+            (e) => this.handleMoveEnd(e)
+        );
+
+        // FIRE
         if (this.fireBtn) {
-            this.fireBtn.addEventListener("touchstart", (e) => this.handleFireStart(e), { passive: false });
-            this.fireBtn.addEventListener("touchend", (e) => this.handleFireEnd(e));
-            this.fireBtn.addEventListener("touchcancel", (e) => this.handleFireEnd(e));
+            this.fireBtn.addEventListener(
+                'touchstart',
+                (e) => this.handleFireStart(e),
+                { passive: false }
+            );
+
+            this.fireBtn.addEventListener(
+                'touchend',
+                (e) => this.handleFireEnd(e)
+            );
+
+            this.fireBtn.addEventListener(
+                'touchcancel',
+                (e) => this.handleFireEnd(e)
+            );
         }
-        
-        console.log("MobileInput: Initialized with Multitouch Support");
+
+        // TAB SWITCH RECOVERY
+        window.addEventListener('blur', () => {
+            this.resetAllInputs();
+        });
     }
 
+    // =========================
+    // MOVEMENT INPUT
+    // =========================
+
     handleMoveStart(e) {
-        if (this.moveTouchId !== null) return; // Already moving
+        if (this.moveTouchId !== null) return;
 
         const touch = e.changedTouches[0];
         const rect = this.zone.getBoundingClientRect();
-        
+
         this.moveTouchId = touch.identifier;
         this.joystick.active = true;
 
-        if (this.fixedMode) {
-            this.joystick.baseX = rect.left + rect.width / 2;
-            this.joystick.baseY = rect.top + rect.height / 2;
-        } else {
+        // FIXED BASE MODE
+        if (!this.joystick.dynamicMode) {
+            this.joystick.baseX = rect.left + rect.width * 0.5;
+            this.joystick.baseY = rect.top + rect.height * 0.5;
+        }
+        // DYNAMIC BASE MODE
+        else {
             this.joystick.baseX = touch.clientX;
             this.joystick.baseY = touch.clientY;
         }
 
         this.processMove(touch);
+
         e.preventDefault();
     }
 
     handleMoveUpdate(e) {
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
+
             if (touch.identifier === this.moveTouchId) {
                 this.processMove(touch);
                 e.preventDefault();
@@ -87,108 +153,238 @@ class MobileInputController {
     }
 
     processMove(touch) {
-        const dx = touch.clientX - this.joystick.baseX;
-        const dy = touch.clientY - this.joystick.baseY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        
-        const clampedDist = Math.min(dist, this.joystick.radius);
-        
-        this.joystick.stickX = Math.cos(angle) * clampedDist;
-        this.joystick.stickY = Math.sin(angle) * clampedDist;
+        let dx = touch.clientX - this.joystick.baseX;
+        let dy = touch.clientY - this.joystick.baseY;
 
-        // Vector Generation (Normalized -1 to 1)
-        if (dist > this.joystick.deadzone) {
-            this.movementVector.x = Math.cos(angle) * (clampedDist / this.joystick.radius);
-            this.movementVector.y = -Math.sin(angle) * (clampedDist / this.joystick.radius); // Invert Y for forward
-        } else {
+        const distance = Math.hypot(dx, dy);
+
+        // PREVENT EXTREME STRETCHING
+        const clampedDistance = Math.min(
+            distance,
+            this.joystick.maxDistance
+        );
+
+        const angle = Math.atan2(dy, dx);
+
+        // CLAMP JOYSTICK STICK
+        this.joystick.stickX =
+            Math.cos(angle) * clampedDistance;
+
+        this.joystick.stickY =
+            Math.sin(angle) * clampedDistance;
+
+        // DEADZONE HANDLING
+        if (distance < this.joystick.deadzone) {
             this.movementVector.x = 0;
             this.movementVector.y = 0;
+        } else {
+            const normalizedDistance =
+                clampedDistance / this.joystick.maxDistance;
+
+            this.movementVector.x =
+                Math.cos(angle) * normalizedDistance;
+
+            this.movementVector.y =
+                Math.sin(angle) * normalizedDistance;
         }
 
-        // DOM Update (Visual Feedback)
-        if (this.stick) {
-            this.stick.style.transition = "none";
-            this.stick.style.transform = `translate(${this.joystick.stickX}px, ${this.joystick.stickY}px)`;
-            this.stick.style.opacity = "1";
-        }
+        // ANALOG SMOOTHING
+        this.smoothedVector.x +=
+            (this.movementVector.x - this.smoothedVector.x) *
+            this.joystick.smoothing;
+
+        this.smoothedVector.y +=
+            (this.movementVector.y - this.smoothedVector.y) *
+            this.joystick.smoothing;
+
+        // VISUAL UPDATE
+        this.updateJoystickVisuals();
     }
 
     handleMoveEnd(e) {
         for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === this.moveTouchId) {
+            const touch = e.changedTouches[i];
+
+            if (touch.identifier === this.moveTouchId) {
                 this.moveTouchId = null;
+
                 this.joystick.active = false;
-                this.joystick.stickX = 0;
-                this.joystick.stickY = 0;
-                this.movementVector = { x: 0, y: 0 };
-                
-                if (this.stick) {
-                    this.stick.style.transition = "transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s";
-                    this.stick.style.transform = `translate(0, 0)`;
-                    this.stick.style.opacity = "0.5";
-                }
+
+                this.movementVector.x = 0;
+                this.movementVector.y = 0;
+
+                this.smoothedVector.x = 0;
+                this.smoothedVector.y = 0;
+
+                this.resetStick();
+
                 break;
             }
         }
     }
 
+    // =========================
+    // FIRE INPUT
+    // =========================
+
     handleFireStart(e) {
         const touch = e.changedTouches[0];
-        if (this.fireTouchId === null) {
-            this.fireTouchId = touch.identifier;
-            this.isFiring = true;
-            if (this.fireBtn) this.fireBtn.style.transform = "scale(0.9)";
+
+        if (this.fireTouchId !== null) return;
+
+        this.fireTouchId = touch.identifier;
+        this.isFiring = true;
+
+        if (this.fireBtn) {
+            this.fireBtn.style.transform = 'scale(0.88)';
+            this.fireBtn.style.opacity = '1';
         }
+
         e.preventDefault();
     }
 
     handleFireEnd(e) {
         for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === this.fireTouchId) {
+            const touch = e.changedTouches[i];
+
+            if (touch.identifier === this.fireTouchId) {
                 this.fireTouchId = null;
                 this.isFiring = false;
-                if (this.fireBtn) this.fireBtn.style.transform = "scale(1.0)";
+
+                if (this.fireBtn) {
+                    this.fireBtn.style.transform = 'scale(1)';
+                    this.fireBtn.style.opacity = '0.85';
+                }
+
                 break;
             }
         }
     }
 
+    // =========================
+    // VISUALS
+    // =========================
+
+    updateJoystickVisuals() {
+        if (!this.stick) return;
+
+        this.stick.style.transition = 'none';
+
+        this.stick.style.transform = `translate(${this.joystick.stickX}px, ${this.joystick.stickY}px)`;
+
+        this.stick.style.opacity = '1';
+    }
+
+    resetStick() {
+        if (!this.stick) return;
+
+        this.joystick.stickX = 0;
+        this.joystick.stickY = 0;
+
+        this.stick.style.transition =
+            'transform 0.14s ease-out, opacity 0.2s';
+
+        this.stick.style.transform = 'translate(0px, 0px)';
+
+        this.stick.style.opacity = '0.45';
+    }
+
+    // =========================
+    // MAIN UPDATE
+    // =========================
+
+    update(player, deltaTime) {
+        if (!player) return;
+
+        // DIRECT ANALOG MOVEMENT
+        player.inputX = this.smoothedVector.x;
+        player.inputY = this.smoothedVector.y;
+
+        // SHOOTING
+        player.isFiring = this.isFiring;
+    }
+
+    // =========================
+    // RESET
+    // =========================
+
+    resetAllInputs() {
+        this.moveTouchId = null;
+        this.fireTouchId = null;
+
+        this.isFiring = false;
+
+        this.movementVector.x = 0;
+        this.movementVector.y = 0;
+
+        this.smoothedVector.x = 0;
+        this.smoothedVector.y = 0;
+
+        this.joystick.active = false;
+
+        this.resetStick();
+    }
+
+    // =========================
+    // DEBUG RENDER
+    // =========================
+
     renderDebug(ctx) {
-        if (!this.debugEnabled || !this.joystick.active) return;
+        if (!this.debugEnabled) return;
 
         ctx.save();
-        ctx.resetTransform(); // Draw in screen space if possible, but game space is fine for alignment
-        
-        // Scale to arena space if needed, but here we assume ctx is arena space
-        // Let's use simple HUD-style coordinates if we can
-        
-        const bX = this.joystick.baseX; // Note: these are screen coords, might need conversion
-        const bY = this.joystick.baseY;
+        ctx.resetTransform();
 
-        // Draw on game overlay (absolute bottom left)
-        const debugX = 20;
-        const debugY = ctx.canvas.height - 150;
-        
-        ctx.fillStyle = "rgba(0, 255, 65, 0.7)";
-        ctx.font = "12px monospace";
-        ctx.fillText(`MOBILE INPUT DEBUG`, debugX, debugY);
-        ctx.fillText(`MVMT: X:${this.movementVector.x.toFixed(2)} Y:${this.movementVector.y.toFixed(2)}`, debugX, debugY + 15);
-        ctx.fillText(`TID: MVMT:${this.moveTouchId} FIRE:${this.fireTouchId}`, debugX, debugY + 30);
-        ctx.fillText(`JOY: ACT:${this.joystick.active} MODE:${this.fixedMode ? 'FIXED' : 'DYN'}`, debugX, debugY + 45);
+        const x = 20;
+        const y = ctx.canvas.height - 180;
 
-        // Visual Vector
-        ctx.strokeStyle = "rgba(0, 255, 65, 0.5)";
+        ctx.fillStyle = 'rgba(0,255,120,0.9)';
+        ctx.font = '12px monospace';
+
+        ctx.fillText('MOBILE INPUT DEBUG', x, y);
+
+        ctx.fillText(
+            `RAW: ${this.movementVector.x.toFixed(2)} ${this.movementVector.y.toFixed(2)}`,
+            x,
+            y + 18
+        );
+
+        ctx.fillText(
+            `SMOOTH: ${this.smoothedVector.x.toFixed(2)} ${this.smoothedVector.y.toFixed(2)}`,
+            x,
+            y + 36
+        );
+
+        ctx.fillText(
+            `MOVE ID: ${this.moveTouchId}`,
+            x,
+            y + 54
+        );
+
+        ctx.fillText(
+            `FIRE: ${this.isFiring}`,
+            x,
+            y + 72
+        );
+
+        // VECTOR VISUALIZATION
+        ctx.strokeStyle = 'rgba(0,255,120,0.7)';
         ctx.lineWidth = 2;
+
         ctx.beginPath();
-        ctx.arc(debugX + 50, debugY + 80, 40, 0, Math.PI * 2);
+        ctx.arc(x + 60, y + 120, 42, 0, Math.PI * 2);
         ctx.stroke();
-        
+
         ctx.beginPath();
-        ctx.moveTo(debugX + 50, debugY + 80);
-        ctx.lineTo(debugX + 50 + this.movementVector.x * 40, debugY + 80 - this.movementVector.y * 40);
+        ctx.moveTo(x + 60, y + 120);
+
+        ctx.lineTo(
+            x + 60 + this.smoothedVector.x * 42,
+            y + 120 + this.smoothedVector.y * 42
+        );
+
         ctx.stroke();
-        
+
         ctx.restore();
     }
 }

@@ -135,10 +135,11 @@ class TankSurvival {
         if (this.input.isPressed("ArrowRight") || this.input.isPressed("KeyD")) kbTurn += 1;
 
         // 2. Mobile Analog Input
-        const mobileMV = this.mobileInput.movementVector;
+        const mobileMV = this.mobileInput.smoothedVector;
         
-        // 3. Combined Application (Prioritize Mobile Analog if active)
-        const forward = Math.abs(mobileMV.y) > 0.05 ? mobileMV.y : kbForward;
+        // 3. Combined Application
+        // Pushing UP (negative Y) should be forward (+1)
+        const forward = Math.abs(mobileMV.y) > 0.05 ? -mobileMV.y : kbForward;
         const turn = Math.abs(mobileMV.x) > 0.05 ? mobileMV.x : kbTurn;
 
         if (forward !== 0) this.player.move(forward);
@@ -211,6 +212,7 @@ class TankSurvival {
             return;
         }
 
+        this.mobileInput.update(this.player, deltaTime);
         this.handleInput();
         
         if (this.player) this.player.update(deltaTime, this.obstacles, this.enemies);
