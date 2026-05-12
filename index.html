@@ -51,19 +51,34 @@
                 </div>
             </div>
 
-            <div id="mobileControls" class="mobile-only">
-                <div id="joystickZone">
-                    <div id="joystickBase">
-                        <div id="joystickStick"></div>
-                    </div>
-                </div>
-                <button id="mobileFireBtn">ENGAGE</button>
-            </div>
-        </div>
-
         <div class="status-bar">
             <p id="statusText">System: Ready</p>
             <p class="credit">MADE BY SURAJ</p>
+        </div>
+    </div>
+
+    <!-- Mobile Controls (Moved outside wrapper for easier fixed positioning) -->
+    <div id="mobileControls">
+        <div id="joystickZone">
+            <div id="joystickBase">
+                <div id="joystickStick"></div>
+            </div>
+        </div>
+        <button id="mobileFireBtn">FIRE</button>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settingsOverlay" class="settings-overlay" style="display: none;">
+        <div class="settings-content">
+            <h2 style="color: var(--primary); margin-top: 0; font-size: 1.5rem; letter-spacing: 2px;">SETTINGS</h2>
+            <div class="setting-row">
+                <span style="color: #fff; font-size: 0.9rem;">FIXED JOYSTICK</span>
+                <label class="switch">
+                    <input type="checkbox" id="fixedJoystickToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <button id="closeSettings" class="btn" style="width: 100%; margin-top: 10px;">CLOSE</button>
         </div>
     </div>
 
