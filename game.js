@@ -129,10 +129,12 @@ class TankSurvival {
         const mobileMV = this.mobileInput.smoothedVector;
         const mobileActive = Math.abs(mobileMV.x) > 0.05 || Math.abs(mobileMV.y) > 0.05;
 
+        const moveSpeed = this.player.speedBoost ? CONFIG.TANK_SPEED * 1.5 : CONFIG.TANK_SPEED;
+
         if (mobileActive) {
             // Mobile: Direct screen-space movement (Player POV)
-            this.player.vx = mobileMV.x * CONFIG.TANK_SPEED;
-            this.player.vy = mobileMV.y * CONFIG.TANK_SPEED;
+            this.player.vx = mobileMV.x * moveSpeed;
+            this.player.vy = mobileMV.y * moveSpeed;
             this.player.autoRotateTarget = Math.atan2(mobileMV.y, mobileMV.x);
         } else {
             // Keyboard: Also screen-space for consistency (Player POV)
@@ -146,8 +148,8 @@ class TankSurvival {
 
             if (moveX !== 0 || moveY !== 0) {
                 const mag = Math.hypot(moveX, moveY);
-                this.player.vx = (moveX / mag) * CONFIG.TANK_SPEED;
-                this.player.vy = (moveY / mag) * CONFIG.TANK_SPEED;
+                this.player.vx = (moveX / mag) * moveSpeed;
+                this.player.vy = (moveY / mag) * moveSpeed;
                 this.player.autoRotateTarget = Math.atan2(moveY, moveX);
             }
         }

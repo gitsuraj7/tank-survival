@@ -159,11 +159,30 @@ class Tank {
         ctx.fillStyle = this.damageFlash > 0 ? "#fff" : this.color;
         
         if (this.invulnerable) {
-            ctx.globalAlpha = Math.sin(Date.now() / 100) * 0.3 + 0.6;
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(-this.width/2 - 5, -this.height/2 - 5, this.width + 10, this.height + 10);
+            ctx.restore();
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            
+            // Energy Bubble
+            ctx.globalAlpha = Math.sin(Date.now() / 150) * 0.2 + 0.4;
+            ctx.strokeStyle = "#ffff00";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width * 0.8, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Hexagon bits
+            ctx.rotate(Date.now() / 1000);
+            for(let i=0; i<6; i++) {
+                ctx.rotate(Math.PI/3);
+                ctx.fillRect(this.width * 0.7, -2, 4, 4);
+            }
+            
             ctx.globalAlpha = 1.0;
+            ctx.restore();
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
         }
         
         // Main Body with recoil effect

@@ -1,6 +1,6 @@
 const PowerUpType = {
-    SPEED: 'SPEED',
-    RAPID_FIRE: 'RAPID_FIRE',
+    OVERDRIVE: 'OVERDRIVE',
+    REPAIR: 'REPAIR',
     SHIELD: 'SHIELD'
 };
 
@@ -36,20 +36,41 @@ class PowerUp {
     apply(tank, game) {
         game.audio.playPickup();
         switch (this.type) {
-            case PowerUpType.SPEED:
+            case PowerUpType.OVERDRIVE:
+                // Combine speed and fire rate
                 if (tank.speedTimeout) clearTimeout(tank.speedTimeout);
-                tank.speedBoost = true;
-                tank.speedTimeout = setTimeout(() => { tank.speedBoost = false; tank.speedTimeout = null; }, 5000);
-                break;
-            case PowerUpType.RAPID_FIRE:
                 if (tank.rapidFireTimeout) clearTimeout(tank.rapidFireTimeout);
+                
+                tank.speedBoost = true;
                 tank.rapidFire = true;
-                tank.rapidFireTimeout = setTimeout(() => { tank.rapidFire = false; tank.rapidFireTimeout = null; }, 5000);
+                
+                const overdriveDuration = 6000;
+                tank.speedTimeout = setTimeout(() => { 
+                    tank.speedBoost = false; 
+                    tank.speedTimeout = null; 
+                }, overdriveDuration);
+                
+                tank.rapidFireTimeout = setTimeout(() => { 
+                    tank.rapidFire = false; 
+                    tank.rapidFireTimeout = null; 
+                }, overdriveDuration);
                 break;
+                
+            case PowerUpType.REPAIR:
+                // Nano-Repair: +50 HP, capped at 200
+                const maxHP = tank.id === 1 ? 200 : 100;
+                tank.health = Math.min(tank.health + 50, maxHP);
+                game.ui.updateStatus("NANO-REPAIR SEQUENCE COMPLETE");
+                break;
+                
             case PowerUpType.SHIELD:
                 if (tank.invulnerabilityTimeout) clearTimeout(tank.invulnerabilityTimeout);
                 tank.invulnerable = true;
-                tank.invulnerabilityTimeout = setTimeout(() => { tank.invulnerable = false; tank.invulnerabilityTimeout = null; }, 5000);
+                tank.invulnerabilityTimeout = setTimeout(() => { 
+                    tank.invulnerable = false; 
+                    tank.invulnerabilityTimeout = null; 
+                }, 6000);
+                game.ui.updateStatus("KINETIC SHIELD ENGAGED");
                 break;
         }
     }
@@ -61,14 +82,18 @@ class PowerUp {
         ctx.translate(this.x, this.y);
         
         let color = "#fff";
-        if (this.type === PowerUpType.SPEED) color = "#00ffff";
-        if (this.type === PowerUpType.RAPID_FIRE) color = "#ff00ff";
-        if (this.type === PowerUpType.SHIELD) color = "#ffff00";
+        if (this.type === PowerUpType.OVERDRIVE) color = "#00f2ff"; // Cyan
+        if (this.type === PowerUpType.REPAIR) color = "#00ff41";    // Green
+        if (this.type === PowerUpType.SHIELD) color = "#ffff00";    // Yellow
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.rotate(Date.now() / 1000);
+        
+        // Draw double square for "premium" look
         ctx.strokeRect(-this.currentSize/2, -this.currentSize/2, this.currentSize, this.currentSize);
+        ctx.rotate(Math.PI / 4);
+        ctx.strokeRect(-this.currentSize/3, -this.currentSize/3, this.currentSize*0.6, this.currentSize*0.6);
         
         ctx.globalAlpha = 0.2;
         ctx.fillStyle = color;

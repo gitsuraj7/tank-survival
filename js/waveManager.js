@@ -33,6 +33,15 @@ class WaveManager {
         // Only clear wave if we have actually started and spawned all enemies
         if (this.currentWave > 0 && this.enemiesRemaining <= 0 && this.spawnQueue <= 0) {
             this.game.state = State.WAVE_CLEAR;
+            
+            // Health Reward Hook
+            if (this.game.player) {
+                const healAmount = 75;
+                const maxHP = 200;
+                this.game.player.health = Math.min(this.game.player.health + healAmount, maxHP);
+                this.game.ui.updateStatus(`WAVE CLEAR: +${healAmount} HP RECOVERED`);
+            }
+
             setTimeout(() => this.startNextWave(), CONFIG.WAVE_DELAY);
         }
     }
