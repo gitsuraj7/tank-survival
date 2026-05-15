@@ -22,7 +22,9 @@ class UIManager {
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener("click", () => {
                 this.settingsOverlay.style.display = "flex";
-                this.fixedJoystickToggle.checked = this.game.input.settings.fixedJoystick;
+                const stored = localStorage.getItem("fixedJoystick");
+                const isFixed = stored !== null ? stored === "true" : true;
+                this.fixedJoystickToggle.checked = isFixed;
             });
         }
 
@@ -34,7 +36,9 @@ class UIManager {
 
         if (this.fixedJoystickToggle) {
             this.fixedJoystickToggle.addEventListener("change", (e) => {
-                this.game.input.settings.fixedJoystick = e.target.checked;
+                if (this.game.mobileInput) {
+                    this.game.mobileInput.joystick.dynamicMode = !e.target.checked;
+                }
                 localStorage.setItem("fixedJoystick", e.target.checked);
             });
         }

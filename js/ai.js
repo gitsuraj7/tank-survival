@@ -23,7 +23,8 @@ class EnemyTank extends Tank {
 
     think(obstacles) {
         if (!this.target || this.target.isDead) {
-            this.velocity *= 0.9;
+            this.vx *= 0.9;
+            this.vy *= 0.9;
             return;
         }
 
@@ -33,10 +34,11 @@ class EnemyTank extends Tank {
         let tx = this.target.x;
         let ty = this.target.y;
         
-        if (Math.abs(this.target.velocity) > 0.1) {
+        const targetVel = Math.hypot(this.target.vx, this.target.vy);
+        if (targetVel > 0.1) {
             const timeToHit = dist / CONFIG.BULLET_SPEED;
-            tx += Math.cos(this.target.angle) * this.target.velocity * timeToHit * 0.7; // Lead the shot
-            ty += Math.sin(this.target.angle) * this.target.velocity * timeToHit * 0.7;
+            tx += this.target.vx * timeToHit * 0.7; // Lead the shot
+            ty += this.target.vy * timeToHit * 0.7;
         }
 
         const targetAngle = Math.atan2(ty - this.y, tx - this.x);
@@ -84,7 +86,8 @@ class EnemyTank extends Tank {
         for (const o of obstacles) {
             if (Collision.pointRect(ax, ay, o)) {
                 this.panicTurn = 20;
-                this.velocity *= 0.5;
+                this.vx *= 0.5;
+                this.vy *= 0.5;
                 break;
             }
         }

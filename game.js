@@ -126,24 +126,31 @@ class TankSurvival {
     handleInput() {
         if (this.state !== State.PLAYING || !this.player) return;
 
-        // 1. Keyboard Input
-        let kbForward = 0;
-        let kbTurn = 0;
-        if (this.input.isPressed("ArrowUp") || this.input.isPressed("KeyW")) kbForward += 1;
-        if (this.input.isPressed("ArrowDown") || this.input.isPressed("KeyS")) kbForward -= 1;
-        if (this.input.isPressed("ArrowLeft") || this.input.isPressed("KeyA")) kbTurn -= 1;
-        if (this.input.isPressed("ArrowRight") || this.input.isPressed("KeyD")) kbTurn += 1;
-
-        // 2. Mobile Analog Input
         const mobileMV = this.mobileInput.smoothedVector;
-        
-        // 3. Combined Application
-        // Pushing UP (negative Y) should be forward (+1)
-        const forward = Math.abs(mobileMV.y) > 0.05 ? -mobileMV.y : kbForward;
-        const turn = Math.abs(mobileMV.x) > 0.05 ? mobileMV.x : kbTurn;
+        const mobileActive = Math.abs(mobileMV.x) > 0.05 || Math.abs(mobileMV.y) > 0.05;
 
-        if (forward !== 0) this.player.move(forward);
-        if (turn !== 0) this.player.rotate(turn);
+        if (mobileActive) {
+            // Mobile: Direct screen-space movement (Player POV)
+            this.player.vx = mobileMV.x * CONFIG.TANK_SPEED;
+            this.player.vy = mobileMV.y * CONFIG.TANK_SPEED;
+            this.player.autoRotateTarget = Math.atan2(mobileMV.y, mobileMV.x);
+        } else {
+            // Keyboard: Also screen-space for consistency (Player POV)
+            this.player.autoRotateTarget = undefined;
+
+            let moveX = 0, moveY = 0;
+            if (this.input.isPressed("ArrowUp") || this.input.isPressed("KeyW")) moveY -= 1;
+            if (this.input.isPressed("ArrowDown") || this.input.isPressed("KeyS")) moveY += 1;
+            if (this.input.isPressed("ArrowLeft") || this.input.isPressed("KeyA")) moveX -= 1;
+            if (this.input.isPressed("ArrowRight") || this.input.isPressed("KeyD")) moveX += 1;
+
+            if (moveX !== 0 || moveY !== 0) {
+                const mag = Math.hypot(moveX, moveY);
+                this.player.vx = (moveX / mag) * CONFIG.TANK_SPEED;
+                this.player.vy = (moveY / mag) * CONFIG.TANK_SPEED;
+                this.player.autoRotateTarget = Math.atan2(moveY, moveX);
+            }
+        }
 
         // Shooting
         if (this.input.isPressed("Space") || this.input.isPressed("Enter") || this.mobileInput.isFiring) {
@@ -169,7 +176,9 @@ class TankSurvival {
         
         if (tank.id === 1) {
             this.renderer.shake(3);
-            this.player.velocity -= 1.5; // Physical recoil
+            // Vector-based physical recoil
+            tank.vx -= Math.cos(tank.angle) * 1.5;
+            tank.vy -= Math.sin(tank.angle) * 1.5;
         }
     }
 
@@ -212,7 +221,6 @@ class TankSurvival {
             return;
         }
 
-        this.mobileInput.update(this.player, deltaTime);
         this.handleInput();
         
         if (this.player) this.player.update(deltaTime, this.obstacles, this.enemies);

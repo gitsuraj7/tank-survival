@@ -8,8 +8,10 @@ class Tank {
         this.width = CONFIG.TANK_WIDTH;
         this.height = CONFIG.TANK_HEIGHT;
         
-        this.velocity = 0;
+        this.vx = 0;
+        this.vy = 0;
         this.angularVelocity = 0; // Added for smooth rotation
+        this.autoRotateTarget = undefined;
         this.recoil = 0;
         this.lastShot = 0;
         this.health = 100;
@@ -27,7 +29,8 @@ class Tank {
     move(dir) {
         if (this.isDead) return;
         const accel = 0.5;
-        this.velocity += dir * accel;
+        this.vx += Math.cos(this.angle) * dir * accel;
+        this.vy += Math.sin(this.angle) * dir * accel;
     }
 
     rotate(dir) {
@@ -47,21 +50,31 @@ class Tank {
         if (this.isDead) return;
 
         // Linear Friction
-        this.velocity *= 0.92;
-        if (Math.abs(this.velocity) < 0.1) this.velocity = 0;
+        this.vx *= 0.92;
+        this.vy *= 0.92;
+        if (Math.abs(this.vx) < 0.1) this.vx = 0;
+        if (Math.abs(this.vy) < 0.1) this.vy = 0;
 
         // Angular Friction (Smooth rotation)
         this.angle += this.angularVelocity;
         this.angularVelocity *= 0.75; // Even more damping for precise aiming
         if (Math.abs(this.angularVelocity) < 0.001) this.angularVelocity = 0;
 
-        // Sliding Collision: Attempt X and Y separately
-        const moveX = Math.cos(this.angle) * this.velocity;
-        const moveY = Math.sin(this.angle) * this.velocity;
+        // Auto-rotation (mobile direct control)
+        if (this.autoRotateTarget !== undefined) {
+            let diff = this.autoRotateTarget - this.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            if (Math.abs(diff) > 0.02) {
+                this.angle += Math.sign(diff) * Math.min(Math.abs(diff), 0.08);
+            } else {
+                this.angle = this.autoRotateTarget;
+            }
+        }
 
         // Try X move
         let oldX = this.x;
-        this.x += moveX;
+        this.x += this.vx;
         let tankRectX = { x: this.x - this.width/2, y: this.y - this.height/2, w: this.width, h: this.height };
         let collidedX = false;
 
@@ -84,12 +97,12 @@ class Tank {
         }
         if (collidedX) {
             this.x = oldX;
-            this.velocity *= 0.8; // Friction against wall
+            this.vx *= -0.5; // Bounce slightly
         }
 
         // Try Y move
         let oldY = this.y;
-        this.y += moveY;
+        this.y += this.vy;
         let tankRectY = { x: this.x - this.width/2, y: this.y - this.height/2, w: this.width, h: this.height };
         let collidedY = false;
 
@@ -112,19 +125,20 @@ class Tank {
         }
         if (collidedY) {
             this.y = oldY;
-            this.velocity *= 0.8; // Friction against wall
+            this.vy *= -0.5; // Bounce slightly
         }
 
         // Boundary check
-        if (this.x - this.width/2 < 0) { this.x = this.width/2; this.velocity *= 0.8; }
-        if (this.x + this.width/2 > CONFIG.ARENA_WIDTH) { this.x = CONFIG.ARENA_WIDTH - this.width/2; this.velocity *= 0.8; }
-        if (this.y - this.height/2 < 0) { this.y = this.height/2; this.velocity *= 0.8; }
-        if (this.y + this.height/2 > CONFIG.ARENA_HEIGHT) { this.y = CONFIG.ARENA_HEIGHT - this.height/2; this.velocity *= 0.8; }
+        if (this.x - this.width/2 < 0) { this.x = this.width/2; this.vx *= -0.5; }
+        if (this.x + this.width/2 > CONFIG.ARENA_WIDTH) { this.x = CONFIG.ARENA_WIDTH - this.width/2; this.vx *= -0.5; }
+        if (this.y - this.height/2 < 0) { this.y = this.height/2; this.vy *= -0.5; }
+        if (this.y + this.height/2 > CONFIG.ARENA_HEIGHT) { this.y = CONFIG.ARENA_HEIGHT - this.height/2; this.vy *= -0.5; }
 
         // Movement Trail
-        if (Math.abs(this.velocity) > 0.5 && window.game) {
+        if ((Math.abs(this.vx) > 0.5 || Math.abs(this.vy) > 0.5) && window.game) {
             window.game.particles.createTrail(this.x - Math.cos(this.angle) * 20, this.y - Math.sin(this.angle) * 20, this.color);
         }
+
 
         if (this.recoil > 0) this.recoil *= 0.8;
         if (this.damageFlash > 0) this.damageFlash--;

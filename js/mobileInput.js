@@ -43,8 +43,14 @@ class MobileInputController {
         this.stick = document.getElementById('joystickStick');
         this.fireBtn = document.getElementById('mobileFireBtn');
 
+        // LOAD SAVED JOYSTICK MODE
+        const stored = localStorage.getItem("fixedJoystick");
+        if (stored !== null) {
+            this.joystick.dynamicMode = stored === "false";
+        }
+
         // DEBUG
-        this.debugEnabled = true;
+        this.debugEnabled = false;
 
         // SAFE AREA PADDING
         this.safePadding = 24;
@@ -93,17 +99,18 @@ class MobileInputController {
                 (e) => this.handleFireStart(e),
                 { passive: false }
             );
-
-            this.fireBtn.addEventListener(
-                'touchend',
-                (e) => this.handleFireEnd(e)
-            );
-
-            this.fireBtn.addEventListener(
-                'touchcancel',
-                (e) => this.handleFireEnd(e)
-            );
         }
+
+        // Window-level fire end (catches finger sliding off button)
+        window.addEventListener(
+            'touchend',
+            (e) => this.handleFireEnd(e)
+        );
+
+        window.addEventListener(
+            'touchcancel',
+            (e) => this.handleFireEnd(e)
+        );
 
         // TAB SWITCH RECOVERY
         window.addEventListener('blur', () => {
